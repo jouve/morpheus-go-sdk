@@ -135,12 +135,15 @@ func (client *Client) DeleteNodeType(id int64, req *Request) (*Response, error) 
 	})
 }
 
-func (client *Client) FindNodeTypeByName(name string) (*Response, error) {
-	// Find by name, then get by ID
+func (client *Client) FindNodeType(name, provisionType string) (*Response, error) {
+	queryParams := map[string]string{
+		"name": name,
+	}
+	if provisionType != "" {
+		queryParams["provisionType"] = provisionType
+	}
 	resp, err := client.ListNodeTypes(&Request{
-		QueryParams: map[string]string{
-			"name": name,
-		},
+		QueryParams: queryParams,
 	})
 	if err != nil {
 		return resp, err
@@ -153,4 +156,8 @@ func (client *Client) FindNodeTypeByName(name string) (*Response, error) {
 	firstRecord := (*listResult.NodeTypes)[0]
 	nodeTypeID := firstRecord.ID
 	return client.GetNodeType(nodeTypeID, &Request{})
+}
+
+func (client *Client) FindNodeTypeByName(name string) (*Response, error) {
+	return client.FindNodeType(name, "")
 }
