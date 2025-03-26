@@ -484,11 +484,22 @@ type CreateClusterResult struct {
 	Cluster *Cluster          `json:"cluster"`
 }
 
+type AddClusterWorkerResult struct {
+	Success bool              `json:"success"`
+	Message string            `json:"msg"`
+	Errors  map[string]string `json:"errors"`
+	Workers *[]ClusterWorker  `json:"workers"`
+}
+
 type UpdateClusterResult struct {
 	CreateClusterResult
 }
 
 type DeleteClusterResult struct {
+	DeleteResult
+}
+
+type DeleteClusterWorkerResult struct {
 	DeleteResult
 }
 
@@ -616,7 +627,7 @@ func (client *Client) DeleteClusterWorker(id int64, workerId int64, req *Request
 		Path:        fmt.Sprintf("%s/%d/servers/%d", ClustersPath, id, workerId),
 		QueryParams: req.QueryParams,
 		Body:        req.Body,
-		Result:      &StandardResult{},
+		Result:      &DeleteClusterWorkerResult{},
 	})
 }
 
@@ -713,6 +724,17 @@ func (client *Client) ListClusterWorkers(id int64, req *Request) (*Response, err
 		QueryParams: req.QueryParams,
 		Body:        req.Body,
 		Result:      &ListClusterWorkersResults{},
+	})
+}
+
+// AddClusterWorker adds a new cluster worker to an existing cluster
+func (client *Client) AddClusterWorker(id int64, req *Request) (*Response, error) {
+	return client.Execute(&Request{
+		Method:      "POST",
+		Path:        fmt.Sprintf("%s/%d/servers", ClustersPath, id),
+		QueryParams: req.QueryParams,
+		Body:        req.Body,
+		Result:      &AddClusterWorkerResult{},
 	})
 }
 
