@@ -4,10 +4,8 @@ import (
 	"fmt"
 )
 
-var (
-	// StorageVolumesPath is the API endpoint for Storage Volumes
-	StorageVolumesPath = "/api/storage-volumes"
-)
+// StorageVolumesPath is the API endpoint for Storage Volumes
+var StorageVolumesPath = "/api/storage-volumes"
 
 // StorageVolume structures for use in request and response payloads
 type StorageVolume struct {
@@ -49,7 +47,7 @@ type StorageVolume struct {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`
 	} `json:"datastore"`
-	DatastoreId   string `json:"datastoreId"`
+	DatastoreId   int64  `json:"datastoreId"`
 	StorageGroup  string `json:"storageGroup"`
 	Namespace     string `json:"namespace"`
 	StorageServer string `json:"storageServer"`
