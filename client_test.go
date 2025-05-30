@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	_ "strconv"
 	"testing"
 
+	"crypto/x509"
+	"errors"
 	"github.com/gomorpheus/morpheus-go-sdk"
+	"net/http"
+	"net/http/httptest"
 )
 
 var (
@@ -56,6 +59,61 @@ func getNewClient(t *testing.T) *morpheus.Client {
 	t.Logf("Initializing new client for %v", testUrl)
 	client := morpheus.NewClient(testUrl)
 	return client
+}
+
+// func getNewServer(t *testing.T) *morpheus.Client {
+// 		server := httptest.NewTLSServer(
+// 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+// 			// Simulate a simple 200 OK response
+// 			w.WriteHeader(http.StatusOK)
+// 		}))
+//
+// 		defer server.Close()
+//
+// 		client:= morpheus.NewClient(server.URL, morpheus.WithInsecure(false), morpheus.WithDebug(true))
+// }
+
+func TestSecureTLS(t *testing.T) {
+	server := httptest.NewTLSServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			// Simulate a simple 200 OK response
+			w.WriteHeader(http.StatusOK)
+		}))
+	defer server.Close()
+	fmt.Printf("server url is %v \n", server.URL)
+
+	client := morpheus.NewClient(server.URL, morpheus.WithInsecure(false))
+
+	testRequest := &morpheus.Request{
+		Method: "GET",
+		Path:   "/test",
+	}
+
+	_, err := client.Execute(testRequest)
+
+	var certErr x509.UnknownAuthorityError
+	if !errors.As(err, &certErr) {
+		t.Fatalf("Expected UnknownAuthorityError, got: %v", err)
+	}
+}
+
+func TestInsecureTLS(t *testing.T) {
+	server := httptest.NewTLSServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			// Simulate a simple 200 OK response
+			w.WriteHeader(http.StatusOK)
+		}))
+	defer server.Close()
+
+	Server := morpheus.NewClient(server.URL, morpheus.WithInsecure(true))
+
+	testRequest := &morpheus.Request{
+		Method: "GET",
+		Path:   "/test",
+	}
+
+	resp, err := Server.Execute(testRequest)
+	assertResponse(t, resp, err)
 }
 
 // getTestClient returns a Client that is shared between all tests.

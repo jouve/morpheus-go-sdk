@@ -4,18 +4,19 @@ package morpheus
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"log"
 	"strings"
 	"time"
-
-	"github.com/go-resty/resty/v2"
 )
 
 type clientOptions struct {
-	debug bool
+	debug    bool
+	Insecure bool
 }
 
 type ClientOption func(*clientOptions)
@@ -27,6 +28,13 @@ type ClientOption func(*clientOptions)
 func WithDebug(debug bool) ClientOption {
 	return func(options *clientOptions) {
 		options.debug = debug
+	}
+}
+
+func WithInsecure(Insecure bool) ClientOption {
+	return func(options *clientOptions) {
+		// log.Printf("The Insecure mode is : %v", options.Insecure)
+		options.Insecure = Insecure
 	}
 }
 
@@ -51,6 +59,7 @@ type Client struct {
 	successCount int64
 	errorCount   int64
 	debug        bool
+	Insecure     bool
 }
 
 // func (client * Client) String() string {
@@ -114,6 +123,7 @@ func NewClient(url string, options ...ClientOption) (client *Client) {
 		Url:       url,
 		UserAgent: userAgent,
 		debug:     opts.debug,
+		Insecure:  opts.Insecure,
 	}
 }
 
@@ -191,7 +201,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	// always ignore ssl cert errors for now...
 	// todo: make this is a config setting
 	if strings.HasPrefix(url, "https") {
-		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: client.Insecure})
 	}
 
 	//set timeout
@@ -306,11 +316,22 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		ReceivedAt: restyResponse.ReceivedAt(),
 		Size:       restyResponse.Size(),
 		Body:       restyResponse.Body(), // byte[]
+		Error:      err,
 	}
 
 	// determine success and set err accordingly
 	if !resp.Success {
-		err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
+		// returning Request.Execute() errors
+		if resp.StatusCode == 0 {
+			var certErr x509.UnknownAuthorityError
+			if errors.As(err, &certErr) {
+				err = fmt.Errorf("%w, Remove Env Var MORPHEUS_INSECURE or set to false", err)
+			} else {
+				err = resp.Error
+			}
+		} else {
+			err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
+		}
 		// try to parse the result as a standard result to get success info
 		var standardResult StandardResult
 		standardResultParseErr := json.Unmarshal(resp.Body, &standardResult)
