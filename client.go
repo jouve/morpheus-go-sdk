@@ -321,7 +321,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	if !resp.Success {
 		var certErr x509.UnknownAuthorityError
 		if errors.As(err, &certErr) {
-			err = fmt.Errorf("%w, Remove Env Var MORPHEUS_INSECURE or set to false", err)
+			err = fmt.Errorf("%w, Remove Env Var MORPHEUS_INSECURE or set to false", certErr)
 		} else {
 			err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
 		}
