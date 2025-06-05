@@ -1,4 +1,3 @@
-// Client is the driver for interfacing with the Morpheus API
 package morpheus
 
 import (
@@ -16,7 +15,7 @@ import (
 
 type clientOptions struct {
 	debug    bool
-	Insecure bool
+	insecure bool
 }
 
 type ClientOption func(*clientOptions)
@@ -31,10 +30,9 @@ func WithDebug(debug bool) ClientOption {
 	}
 }
 
-func WithInsecure(Insecure bool) ClientOption {
+func WithInsecure(insecure bool) ClientOption {
 	return func(options *clientOptions) {
-		// log.Printf("The Insecure mode is : %v", options.Insecure)
-		options.Insecure = Insecure
+		options.insecure = insecure
 	}
 }
 
@@ -59,7 +57,7 @@ type Client struct {
 	successCount int64
 	errorCount   int64
 	debug        bool
-	Insecure     bool
+	insecure     bool
 }
 
 // func (client * Client) String() string {
@@ -123,7 +121,7 @@ func NewClient(url string, options ...ClientOption) (client *Client) {
 		Url:       url,
 		UserAgent: userAgent,
 		debug:     opts.debug,
-		Insecure:  opts.Insecure,
+		insecure:  opts.insecure,
 	}
 }
 
@@ -198,10 +196,10 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	restyClient := resty.New()
 	restyClient.SetDebug(client.debug)
 
-	// always ignore ssl cert errors for now...
-	// todo: make this is a config setting
+	// TLS certs enabled by default
+	// to skip set insecure client field to true
 	if strings.HasPrefix(url, "https") {
-		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: client.Insecure})
+		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: client.insecure})
 	}
 
 	//set timeout
@@ -321,17 +319,13 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 
 	// determine success and set err accordingly
 	if !resp.Success {
-		// returning Request.Execute() errors
-		if resp.StatusCode == 0 {
-			var certErr x509.UnknownAuthorityError
-			if errors.As(err, &certErr) {
-				err = fmt.Errorf("%w, Remove Env Var MORPHEUS_INSECURE or set to false", err)
-			} else {
-				err = resp.Error
-			}
+		var certErr x509.UnknownAuthorityError
+		if errors.As(err, &certErr) {
+			err = fmt.Errorf("%w, Remove Env Var MORPHEUS_INSECURE or set to false", err)
 		} else {
 			err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
 		}
+
 		// try to parse the result as a standard result to get success info
 		var standardResult StandardResult
 		standardResultParseErr := json.Unmarshal(resp.Body, &standardResult)
