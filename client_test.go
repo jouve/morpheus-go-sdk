@@ -61,18 +61,6 @@ func getNewClient(t *testing.T) *morpheus.Client {
 	return client
 }
 
-// func getNewServer(t *testing.T) *morpheus.Client {
-// 		server := httptest.NewTLSServer(
-// 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-// 			// Simulate a simple 200 OK response
-// 			w.WriteHeader(http.StatusOK)
-// 		}))
-//
-// 		defer server.Close()
-//
-// 		client:= morpheus.NewClient(server.URL, morpheus.WithInsecure(false), morpheus.WithDebug(true))
-// }
-
 func TestSecureTLS(t *testing.T) {
 	server := httptest.NewTLSServer(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -80,9 +68,8 @@ func TestSecureTLS(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 	defer server.Close()
-	fmt.Printf("server url is %v \n", server.URL)
 
-	client := morpheus.NewClient(server.URL, morpheus.WithInsecure(false))
+	client := morpheus.NewClient(server.URL)
 
 	testRequest := &morpheus.Request{
 		Method: "GET",
