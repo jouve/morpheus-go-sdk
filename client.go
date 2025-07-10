@@ -111,7 +111,7 @@ func parseJsonToResult(data []byte, output interface{}) error {
 }
 
 func NewClient(url string, options ...ClientOption) (client *Client) {
-	userAgent := "morpheus-terraform-plugin v0.1"
+	var userAgent = "morpheus-terraform-plugin v0.1"
 
 	opts := clientOptions{}
 	for _, opt := range options {
@@ -184,7 +184,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	var err error
 
 	// construct the request
-	httpMethod := req.Method
+	var httpMethod = req.Method
 	if httpMethod == "" {
 		// httpMethod = "GET"
 		return nil, errors.New("invalid Request: Method is required eg. GET,POST,PUT,DELETE")
