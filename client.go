@@ -14,23 +14,6 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-const sslCertErrorMsg = `
-
-If you understand the potential security risks of accepting an untrusted server
-certificate, you can bypass this error by setting "insecure = true" in your
-provider configuration. Use this option with caution.
-
-provider "hpe" {
-   morpheus {
-     url = "https://..."
-     .
-     .
-     .
-     insecure = true <-- set to true to ignore SSL certificate errors
-  }
-}
-`
-
 type clientOptions struct {
 	debug    bool
 	insecure bool
@@ -337,12 +320,10 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 
 	// determine success and set err accordingly
 	if !resp.Success {
+
 		var certErr x509.UnknownAuthorityError
-		if errors.As(resp.Error, &certErr) {
-			err = fmt.Errorf("%w, %s", certErr, sslCertErrorMsg)
-		} else {
-			err = fmt.Errorf(`API returned HTTP %d
-			the response is %v`, resp.StatusCode, string(resp.Body))
+		if !errors.As(resp.Error, &certErr) {
+			err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
 		}
 
 		// try to parse the result as a standard result to get success info
