@@ -1,5 +1,6 @@
 // Client is the driver for interfacing with the Morpheus API
 package morpheus
+
 import (
 	"bytes"
 	"crypto/tls"
@@ -50,8 +51,8 @@ type Client struct {
 	//Headers map[string]string
 	//BaseURL   *url.URL
 	//RestyClient *http.Client
-	//LastLoginDate time
-	//requests []*Request
+	// LastLoginDate time
+	// requests []*Request
 	lastRequest  *Request
 	lastResponse *Response
 	requestCount int64
@@ -192,7 +193,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 
 	var url string = client.Url + req.Path
 
-	// var url string = client.Url + req.Path
+	//var url string = client.Url + req.Path
 	// construct resty.Client
 	restyClient := resty.New()
 	restyClient.SetDebug(client.debug)
@@ -466,7 +467,7 @@ func (client *Client) Login() (*Response, error) {
 			var loginResult LoginResult
 			jsonErr := json.Unmarshal(resp.Body, &loginResult)
 			if jsonErr != nil {
-				// logError(fmt.Sprintf("Error parsing JSON result for type %T [%v]", loginResult, jsonErr))
+				//logError(fmt.Sprintf("Error parsing JSON result for type %T [%v]", loginResult, jsonErr))
 				return resp, jsonErr
 			}
 			// log.Printf("LOGIN RESPONSE: ", resp, err)
