@@ -2,17 +2,17 @@
 package morpheus_test
 
 import (
+	"crypto/x509"
 	_ "encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
-	"crypto/x509"
-	"errors"
 	"github.com/gomorpheus/morpheus-go-sdk"
-	"net/http"
-	"net/http/httptest"
 )
 
 var (
@@ -92,7 +92,7 @@ func TestInsecureTLS(t *testing.T) {
 		}))
 	defer server.Close()
 
-	Server := morpheus.NewClient(server.URL, morpheus.WithInsecure(true))
+	Server := morpheus.NewClient(server.URL, morpheus.Insecure())
 
 	testRequest := &morpheus.Request{
 		Method: "GET",

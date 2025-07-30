@@ -31,9 +31,9 @@ func WithDebug(debug bool) ClientOption {
 	}
 }
 
-func WithInsecure(insecure bool) ClientOption {
+func Insecure() ClientOption {
 	return func(options *clientOptions) {
-		options.insecure = insecure
+		options.insecure = true
 	}
 }
 
@@ -111,7 +111,7 @@ func parseJsonToResult(data []byte, output interface{}) error {
 }
 
 func NewClient(url string, options ...ClientOption) (client *Client) {
-	var userAgent = "morpheus-terraform-plugin v0.1"
+	userAgent := "morpheus-terraform-plugin v0.1"
 
 	opts := clientOptions{}
 	for _, opt := range options {
@@ -184,7 +184,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	var err error
 
 	// construct the request
-	var httpMethod = req.Method
+	httpMethod := req.Method
 	if httpMethod == "" {
 		// httpMethod = "GET"
 		return nil, errors.New("invalid Request: Method is required eg. GET,POST,PUT,DELETE")
@@ -303,6 +303,11 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		return nil, fmt.Errorf("invalid request. unknown HTTP method: %v", httpMethod)
 	}
 
+	// var certErr x509.UnknownAuthorityError
+	// if errors.As(err, &certErr) {
+	// 	return resp, certErr
+	// }
+
 	// convert a resty response into our Response object
 
 	// var err error
@@ -315,16 +320,16 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		ReceivedAt: restyResponse.ReceivedAt(),
 		Size:       restyResponse.Size(),
 		Body:       restyResponse.Body(), // byte[]
-		Error:      err,
+	}
+
+	var certErr x509.UnknownAuthorityError
+	if errors.As(err, &certErr) {
+		return resp, certErr
 	}
 
 	// determine success and set err accordingly
 	if !resp.Success {
-
-		var certErr x509.UnknownAuthorityError
-		if !errors.As(resp.Error, &certErr) {
-			err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
-		}
+		err = fmt.Errorf("API returned HTTP %d", resp.StatusCode)
 
 		// try to parse the result as a standard result to get success info
 		var standardResult StandardResult
