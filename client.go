@@ -208,7 +208,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	restyClient := resty.New()
 	restyClient.SetDebug(client.debug)
 
-	// TLS certs enabled by default
+	// TLS cert verification enabled by default
 	// to skip set insecure client field to true
 	if strings.HasPrefix(url, "https") {
 		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: client.insecure})
