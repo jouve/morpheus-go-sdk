@@ -15,7 +15,7 @@ import (
 )
 
 type clientOptions struct {
-	debug           bool
+	debug bool
 	insecure        bool
 	errCallbackFunc func(err error) error
 }
@@ -61,13 +61,13 @@ type Client struct {
 	//RestyClient *http.Client
 	// LastLoginDate time
 	// requests []*Request
-	lastRequest    *Request
-	lastResponse   *Response
-	requestCount   int64
-	successCount   int64
-	errorCount     int64
-	debug          bool
-	insecure       bool
+	lastRequest  *Request
+	lastResponse *Response
+	requestCount int64
+	successCount int64
+	errorCount   int64
+	debug        bool
+	insecure     bool
 	errCallbackFunc func(err error) error
 }
 
@@ -129,10 +129,10 @@ func NewClient(url string, options ...ClientOption) (client *Client) {
 	}
 
 	return &Client{
-		Url:            url,
-		UserAgent:      userAgent,
-		debug:          opts.debug,
-		insecure:       opts.insecure,
+		Url:       url,
+		UserAgent: userAgent,
+		debug:     opts.debug,
+		insecure:	opts.insecure,
 		errCallbackFunc: opts.errCallbackFunc,
 	}
 }
