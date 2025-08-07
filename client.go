@@ -4,7 +4,6 @@ package morpheus
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,8 +15,9 @@ import (
 )
 
 type clientOptions struct {
-	debug    bool
-	insecure bool
+	debug           bool
+	insecure        bool
+	errCallbackFunc func(err error) error
 }
 
 type ClientOption func(*clientOptions)
@@ -29,6 +29,14 @@ type ClientOption func(*clientOptions)
 func WithDebug(debug bool) ClientOption {
 	return func(options *clientOptions) {
 		options.debug = debug
+	}
+}
+
+// Note: only non-nil callbackFunc return values
+// will be used as returned error in Execute()
+func WithErrCallbackFunc(callbackFunc func(err error) error) ClientOption {
+	return func(options *clientOptions) {
+		options.errCallbackFunc = callbackFunc
 	}
 }
 
@@ -48,18 +56,19 @@ type Client struct {
 	ExpiresIn       int64
 	Scope           string
 	UserAgent       string
-	//Headers map[string]string
-	//BaseURL   *url.URL
-	//RestyClient *http.Client
+	// Headers map[string]string
+	// BaseURL   *url.URL
+	// RestyClient *http.Client
 	// LastLoginDate time
 	// requests []*Request
-	lastRequest  *Request
-	lastResponse *Response
-	requestCount int64
-	successCount int64
-	errorCount   int64
-	debug        bool
-	insecure     bool
+	lastRequest     *Request
+	lastResponse    *Response
+	requestCount    int64
+	successCount    int64
+	errorCount      int64
+	debug           bool
+	insecure        bool
+	errCallbackFunc func(err error) error
 }
 
 // func (client * Client) String() string {
@@ -112,7 +121,7 @@ func parseJsonToResult(data []byte, output interface{}) error {
 }
 
 func NewClient(url string, options ...ClientOption) (client *Client) {
-	var userAgent = "morpheus-terraform-plugin v0.1"
+	userAgent := "morpheus-terraform-plugin v0.1"
 
 	opts := clientOptions{}
 	for _, opt := range options {
@@ -120,10 +129,11 @@ func NewClient(url string, options ...ClientOption) (client *Client) {
 	}
 
 	return &Client{
-		Url:       url,
-		UserAgent: userAgent,
-		debug:     opts.debug,
-		insecure:  opts.insecure,
+		Url:             url,
+		UserAgent:       userAgent,
+		debug:           opts.debug,
+		insecure:        opts.insecure,
+		errCallbackFunc: opts.errCallbackFunc,
 	}
 }
 
@@ -131,7 +141,7 @@ func (client *Client) SetUsername(username string) *Client {
 	// clear access token if switching users
 	if client.Username != username {
 		client.ClearAccessToken()
-		//client.AccessToken = ""
+		// client.AccessToken = ""
 	}
 	client.Username = username
 	return client
@@ -185,7 +195,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	var err error
 
 	// construct the request
-	var httpMethod = req.Method
+	httpMethod := req.Method
 	if httpMethod == "" {
 		// httpMethod = "GET"
 		return nil, errors.New("invalid Request: Method is required eg. GET,POST,PUT,DELETE")
@@ -193,7 +203,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 
 	var url string = client.Url + req.Path
 
-	//var url string = client.Url + req.Path
+	// var url string = client.Url + req.Path
 	// construct resty.Client
 	restyClient := resty.New()
 	restyClient.SetDebug(client.debug)
@@ -204,7 +214,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: client.insecure})
 	}
 
-	//set timeout
+	// set timeout
 	if req.Timeout > 0 {
 		restyClient.SetTimeout(time.Duration(req.Timeout) * time.Second)
 	}
@@ -236,7 +246,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	if httpMethod == "POST" || httpMethod == "PUT" || httpMethod == "PATCH" {
 		// FormData means use application/x-www-form-urlencoded
 		if req.FormData != nil {
-			//log.Printf("REQUEST FORM DATA: ", req.FormData)
+			// log.Printf("REQUEST FORM DATA: ", req.FormData)
 			// var formData map[string]string
 			// for k,v := range req.FormData {
 			// 	formData[k] = fmt.Sprintf("%v", v)
@@ -259,7 +269,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		}
 
 		if req.Body != nil {
-			//log.Printf("REQUEST BODY: ", req.Body)
+			// log.Printf("REQUEST BODY: ", req.Body)
 			// Aways json for now...
 			// todo: use encoder
 			restyReq.SetBody(req.Body)
@@ -306,10 +316,10 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 
 	// convert a resty response into our Response object
 
-	//var err error
+	// var err error
 
 	resp = &Response{
-		//RestyResponse: restyResponse,
+		// RestyResponse: restyResponse,
 		Success:    restyResponse.IsSuccess(),
 		StatusCode: restyResponse.StatusCode(),
 		Status:     restyResponse.Status(),
@@ -318,9 +328,12 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		Body:       restyResponse.Body(), // byte[]
 	}
 
-	var certErr x509.UnknownAuthorityError
-	if errors.As(err, &certErr) {
-		return resp, certErr
+	if client.errCallbackFunc != nil {
+		customErr := client.errCallbackFunc(err)
+		// only use non-nil errors
+		if customErr != nil {
+			return resp, customErr
+		}
 	}
 
 	// determine success and set err accordingly
@@ -359,7 +372,7 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		if jsonParseResultError != nil {
 			// maybe actually treat this as a failure..
 			log.Printf("Failed to parse JSON result for type %T. Parse Error: %v", resp.Result, jsonParseResultError)
-			//log.Errorf("Parse Error: %v", jsonParseResultError)
+			// log.Errorf("Parse Error: %v", jsonParseResultError)
 			// err = jsonParseResultError
 			// resp.Success = false
 		}
@@ -444,7 +457,7 @@ func (client *Client) Login() (*Response, error) {
 		// log.Printf("Login skipped. Already logged in as: %v", client.Username)
 		return nil, nil
 	} else {
-		//c(fmt.Sprintf("Logging in as %s at %s", client.Username, client.Url))
+		// c(fmt.Sprintf("Logging in as %s at %s", client.Username, client.Url))
 		loginRequest := &Request{
 			Method: "POST",
 			Path:   "/oauth/token",
@@ -467,7 +480,7 @@ func (client *Client) Login() (*Response, error) {
 			var loginResult LoginResult
 			jsonErr := json.Unmarshal(resp.Body, &loginResult)
 			if jsonErr != nil {
-				//logError(fmt.Sprintf("Error parsing JSON result for type %T [%v]", loginResult, jsonErr))
+				// logError(fmt.Sprintf("Error parsing JSON result for type %T [%v]", loginResult, jsonErr))
 				return resp, jsonErr
 			}
 			// log.Printf("LOGIN RESPONSE: ", resp, err)
@@ -479,7 +492,7 @@ func (client *Client) Login() (*Response, error) {
 				// log.Printf("Access Token: ", client.AccessToken)
 			} else {
 				err = errors.New("Login failed, unable to parse access token from login response")
-				//logError(err)
+				// logError(err)
 			}
 			// client.setLastLoginResult(loginResult)
 			return resp, err
@@ -490,7 +503,7 @@ func (client *Client) Login() (*Response, error) {
 
 	}
 
-	//return resp, err
+	// return resp, err
 }
 
 func (client *Client) Logout() (*Response, error) {
