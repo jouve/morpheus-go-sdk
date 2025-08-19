@@ -100,6 +100,9 @@ type IdentitySource struct {
 	Subdomain        string `json:"subdomain"`
 	LoginURL         string `json:"loginURL"`
 	ProviderSettings struct {
+		AscUrl     string `json:"ascUrl"`
+		EntityId   string `json:"entityId"`
+		SpMetadata string `json:"spMetadata"`
 	} `json:"providerSettings"`
 	DateCreated time.Time `json:"dateCreated"`
 	LastUpdated time.Time `json:"lastUpdated"`
