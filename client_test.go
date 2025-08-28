@@ -2,9 +2,13 @@
 package morpheus_test
 
 import (
+	"crypto/x509"
 	_ "encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	_ "strconv"
 	"testing"
@@ -56,6 +60,48 @@ func getNewClient(t *testing.T) *morpheus.Client {
 	t.Logf("Initializing new client for %v", testUrl)
 	client := morpheus.NewClient(testUrl)
 	return client
+}
+
+func TestSecureTLS(t *testing.T) {
+	server := httptest.NewTLSServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			// Simulate a simple 200 OK response
+			w.WriteHeader(http.StatusOK)
+		}))
+	defer server.Close()
+
+	client := morpheus.NewClient(server.URL)
+
+	testRequest := &morpheus.Request{
+		Method: "GET",
+		Path:   "/test",
+	}
+
+	_, err := client.Execute(testRequest)
+
+	var certErr x509.UnknownAuthorityError
+	if !errors.As(err, &certErr) {
+		t.Fatalf("Expected UnknownAuthorityError, got: %v", err)
+	}
+}
+
+func TestInsecureTLS(t *testing.T) {
+	server := httptest.NewTLSServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			// Simulate a simple 200 OK response
+			w.WriteHeader(http.StatusOK)
+		}))
+	defer server.Close()
+
+	Server := morpheus.NewClient(server.URL, morpheus.Insecure())
+
+	testRequest := &morpheus.Request{
+		Method: "GET",
+		Path:   "/test",
+	}
+
+	resp, err := Server.Execute(testRequest)
+	assertResponse(t, resp, err)
 }
 
 // getTestClient returns a Client that is shared between all tests.

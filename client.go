@@ -16,6 +16,8 @@ import (
 
 type clientOptions struct {
 	debug bool
+	insecure        bool
+	errCallbackFunc func(err error) error
 }
 
 type ClientOption func(*clientOptions)
@@ -27,6 +29,20 @@ type ClientOption func(*clientOptions)
 func WithDebug(debug bool) ClientOption {
 	return func(options *clientOptions) {
 		options.debug = debug
+	}
+}
+
+// Note: only non-nil callbackFunc return values
+// will be used as returned error in Execute()
+func WithErrCallbackFunc(callbackFunc func(err error) error) ClientOption {
+	return func(options *clientOptions) {
+		options.errCallbackFunc = callbackFunc
+	}
+}
+
+func Insecure() ClientOption {
+	return func(options *clientOptions) {
+		options.insecure = true
 	}
 }
 
@@ -51,6 +67,8 @@ type Client struct {
 	successCount int64
 	errorCount   int64
 	debug        bool
+	insecure     bool
+	errCallbackFunc func(err error) error
 }
 
 // func (client * Client) String() string {
@@ -114,6 +132,8 @@ func NewClient(url string, options ...ClientOption) (client *Client) {
 		Url:       url,
 		UserAgent: userAgent,
 		debug:     opts.debug,
+		insecure:	opts.insecure,
+		errCallbackFunc: opts.errCallbackFunc,
 	}
 }
 
@@ -188,10 +208,10 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 	restyClient := resty.New()
 	restyClient.SetDebug(client.debug)
 
-	// always ignore ssl cert errors for now...
-	// todo: make this is a config setting
+	// TLS cert verification enabled by default
+	// to skip set insecure client field to true
 	if strings.HasPrefix(url, "https") {
-		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: client.insecure})
 	}
 
 	//set timeout
@@ -306,6 +326,14 @@ func (client *Client) Execute(req *Request) (*Response, error) {
 		ReceivedAt: restyResponse.ReceivedAt(),
 		Size:       restyResponse.Size(),
 		Body:       restyResponse.Body(), // byte[]
+	}
+
+	if client.errCallbackFunc != nil {
+		customErr := client.errCallbackFunc(err)
+		// only use non-nil errors
+		if customErr != nil {
+			return resp, customErr
+		}
 	}
 
 	// determine success and set err accordingly
