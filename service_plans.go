@@ -49,16 +49,9 @@ type ServicePlan struct {
 	Tenants   string     `json:"tenants"`
 	PriceSets []PriceSet `json:"priceSets"`
 	Config    struct {
-		StorageSizeType string `json:"storageSizeType"`
-		MemorySizeType  string `json:"memorySizeType"`
-		Ranges          struct {
-			MinStorage string `json:"minStorage"`
-			MaxStorage string `json:"maxStorage"`
-			MinMemory  int64  `json:"minMemory"`
-			MaxMemory  int64  `json:"maxMemory"`
-			MinCores   string `json:"minCores"`
-			MaxCores   string `json:"maxCores"`
-		} `json:"ranges"`
+		StorageSizeType string         `json:"storageSizeType"`
+		MemorySizeType  string         `json:"memorySizeType"`
+		Ranges          map[string]any // sometimes str, sometimes int ?!
 	} `json:"config"`
 	Zones []struct {
 		ID   int64  `json:"id"`
